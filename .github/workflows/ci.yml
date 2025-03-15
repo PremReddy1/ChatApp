@@ -1,0 +1,38 @@
+name: Node.js CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20" # Use your Node.js version
+
+      - name: Install Dependencies
+        run: npm install
+
+      - name: Lint Code
+        run: npm run lint
+        continue-on-error: true # Optional — don’t fail build on lint errors
+
+      - name: Run Tests
+        run: npm test
+
+      - name: Start Application (for testing)
+        run: |
+          npm start &
+          sleep 5
+          curl -I http://localhost:3000 || exit 1
