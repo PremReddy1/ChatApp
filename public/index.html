@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Chat App with Usernames</title>
+    <script src="/socket.io/socket.io.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f9;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-top: 20px;
+        }
+        #messages {
+            list-style-type: none;
+            padding: 0;
+            width: 300px;
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            margin-bottom: 10px;
+            background: #fff;
+        }
+        #messages li {
+            padding: 8px;
+            border-bottom: 1px solid #eee;
+        }
+        input[type="text"], button {
+            padding: 8px;
+            margin: 5px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .system-message {
+            color: #777;
+            font-style: italic;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <h2>Chat App</h2>
+    <div id="username-section">
+        <input id="username-input" type="text" placeholder="Enter your username..." />
+        <button id="set-username-btn">Set Username</button>
+    </div>
+    <ul id="messages"></ul>
+    <div id="chat-section" style="display: none;">
+        <input id="message-input" type="text" placeholder="Type a message..." />
+        <button id="send-btn">Send</button>
+    </div>
+
+    <script>
+        const socket = io();
+
+        const usernameInput = document.getElementById('username-input');
+        const setUsernameBtn = document.getElementById('set-username-btn');
+        const messageInput = document.getElementById('message-input');
+        const sendBtn = document.getElementById('send-btn');
+        const messagesList = document.getElementById('messages');
+        const chatSection = document.getElementById('chat-section');
+        const usernameSection = document.getElementById('username-section');
+
+        // Set username
+        setUsernameBtn.addEventListener('click', () => {
+            const username = usernameInput.value.trim();
+            if (username) {
+                socket.emit('set username', username);
+                usernameSection.style.display = 'none';
+                chatSection.style.display = 'block';
+            }
+        });
+
+        // Send message
+        sendBtn.addEventListener('click', () => {
+            const message = messageInput.value.trim();
+            if (message) {
+                socket.emit('chat message', message);
+                messageInput.value = '';
+            }
+        });
+
+        // Display chat message
+        socket.on('chat message', (data) => {
+            const li = document.createElement('li');
+            li.innerHTML = `<strong>${data.username}</strong> (${data.time}): ${data.message}`;
+            messagesList.appendChild(li);
+            messagesList.scrollTop = messagesList.scrollHeight;
+        });
+
+        // Display user joined message
+        socket.on('user joined', (msg) => {
+            const li = document.createElement('li');
+            li.textContent = msg;
+            li.className = 'system-message';
+            messagesList.appendChild(li);
+            messagesList.scrollTop = messagesList.scrollHeight;
+        });
+
+        // Display user left message
+        socket.on('user left', (msg) => {
+            const li = document.createElement('li');
+            li.textContent = msg;
+            li.className = 'system-message';
+            messagesList.appendChild(li);
+            messagesList.scrollTop = messagesList.scrollHeight;
+        });
+    </script>
+</body>
+</html>
