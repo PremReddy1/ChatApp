@@ -1,121 +1,173 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Chat App with Usernames</title>
-    <script src="/socket.io/socket.io.js"></script>
+    <title>Chat App</title>
     <style>
         body {
             font-family: Arial, sans-serif;
             background-color: #f4f4f9;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        .chat-container {
+            width: 400px;
+            height: 500px;
+            background-color: #ffffff;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            overflow: hidden;
             display: flex;
             flex-direction: column;
-            align-items: center;
-            margin-top: 20px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
         }
-        #messages {
-            list-style-type: none;
-            padding: 0;
-            width: 300px;
-            max-height: 400px;
+
+        .messages {
+            flex: 1;
+            padding: 10px;
             overflow-y: auto;
-            border: 1px solid #ddd;
-            margin-bottom: 10px;
-            background: #fff;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
         }
-        #messages li {
-            padding: 8px;
-            border-bottom: 1px solid #eee;
+
+        .message {
+            padding: 8px 12px;
+            border-radius: 16px;
+            max-width: 70%;
+            word-wrap: break-word;
+            display: inline-block;
         }
-        input[type="text"], button {
+
+        .my-message {
+            background-color: #d1f7c4;
+            color: #333;
+            align-self: flex-end;
+            border-bottom-right-radius: 0;
+        }
+
+        .other-message {
+            background-color: #e5e5ea;
+            color: #000;
+            align-self: flex-start;
+            border-bottom-left-radius: 0;
+        }
+
+        .message-info {
+            font-size: 12px;
+            color: #777;
+            margin-top: 4px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .input-container {
+            display: flex;
             padding: 8px;
-            margin: 5px;
-            border: 1px solid #ddd;
+            border-top: 1px solid #ccc;
+            background-color: #fafafa;
+        }
+
+        input[type="text"] {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #ccc;
             border-radius: 4px;
+            font-size: 16px;
+            outline: none;
         }
+
         button {
-            background-color: #4CAF50;
+            padding: 10px 16px;
+            background-color: #4caf50;
             color: white;
+            border: none;
+            border-radius: 4px;
+            margin-left: 8px;
             cursor: pointer;
+            transition: background 0.2s;
         }
+
         button:hover {
             background-color: #45a049;
         }
-        .system-message {
-            color: #777;
-            font-style: italic;
-            text-align: center;
-        }
     </style>
 </head>
+
 <body>
-    <h2>Chat App</h2>
-    <div id="username-section">
-        <input id="username-input" type="text" placeholder="Enter your username..." />
-        <button id="set-username-btn">Set Username</button>
-    </div>
-    <ul id="messages"></ul>
-    <div id="chat-section" style="display: none;">
-        <input id="message-input" type="text" placeholder="Type a message..." />
-        <button id="send-btn">Send</button>
+
+    <div class="chat-container">
+        <div class="messages" id="messages"></div>
+
+        <div class="input-container">
+            <input type="text" id="messageInput" placeholder="Type a message..." />
+            <button onclick="sendMessage()">Send</button>
+        </div>
     </div>
 
+    <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
     <script>
-        const socket = io();
+        const socket = io('http://localhost:3000');
+        const messagesContainer = document.getElementById('messages');
+        const messageInput = document.getElementById('messageInput');
 
-        const usernameInput = document.getElementById('username-input');
-        const setUsernameBtn = document.getElementById('set-username-btn');
-        const messageInput = document.getElementById('message-input');
-        const sendBtn = document.getElementById('send-btn');
-        const messagesList = document.getElementById('messages');
-        const chatSection = document.getElementById('chat-section');
-        const usernameSection = document.getElementById('username-section');
+        let username = prompt("Enter your name:");
 
-        // Set username
-        setUsernameBtn.addEventListener('click', () => {
-            const username = usernameInput.value.trim();
-            if (username) {
-                socket.emit('set username', username);
-                usernameSection.style.display = 'none';
-                chatSection.style.display = 'block';
-            }
-        });
+        if (!username) {
+            username = `User${Math.floor(Math.random() * 1000)}`;
+        }
 
-        // Send message
-        sendBtn.addEventListener('click', () => {
+        socket.emit('join', username);
+
+        // ✅ Send message on button click
+        function sendMessage() {
             const message = messageInput.value.trim();
             if (message) {
-                socket.emit('chat message', message);
+                const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                socket.emit('chatMessage', { username, message, timestamp });
                 messageInput.value = '';
+            }
+        }
+
+        // ✅ Send message on "Enter" key press
+        messageInput.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter') {
+                sendMessage();
             }
         });
 
-        // Display chat message
-        socket.on('chat message', (data) => {
-            const li = document.createElement('li');
-            li.innerHTML = `<strong>${data.username}</strong> (${data.time}): ${data.message}`;
-            messagesList.appendChild(li);
-            messagesList.scrollTop = messagesList.scrollHeight;
+        // ✅ Handle incoming messages
+        socket.on('message', ({ username: sender, message, timestamp }) => {
+            const isMine = sender === username;
+            displayMessage(sender, message, timestamp, isMine);
         });
 
-        // Display user joined message
-        socket.on('user joined', (msg) => {
-            const li = document.createElement('li');
-            li.textContent = msg;
-            li.className = 'system-message';
-            messagesList.appendChild(li);
-            messagesList.scrollTop = messagesList.scrollHeight;
-        });
+        // ✅ Display message in chat
+        function displayMessage(sender, message, timestamp, isMine) {
+            const messageElement = document.createElement('div');
+            messageElement.classList.add('message');
+            messageElement.classList.add(isMine ? 'my-message' : 'other-message');
 
-        // Display user left message
-        socket.on('user left', (msg) => {
-            const li = document.createElement('li');
-            li.textContent = msg;
-            li.className = 'system-message';
-            messagesList.appendChild(li);
-            messagesList.scrollTop = messagesList.scrollHeight;
-        });
+            messageElement.innerHTML = `
+      <div>${message}</div>
+      <div class="message-info">
+        <span><strong>${sender}</strong></span>
+        <span>${timestamp}</span>
+      </div>
+    `;
+
+            messagesContainer.appendChild(messageElement);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
     </script>
+
 </body>
+
 </html>
